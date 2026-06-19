@@ -2,6 +2,9 @@
 
 All notable changes to this project will be documented in this file.
 ## 0.9.0 - 2026-06-19
+### Features
+* Implemented performance and stability improvements.
+
 ### Bug fixes
 * Removed the redundant `details` field from `Kameleoon.Error`.
 * Made the `cookie_accessor` parameter of [`set_legal_consent`][set_legal_consent] optional.
