@@ -1,6 +1,28 @@
 # Changelog
 
 All notable changes to this project will be documented in this file.
+## 0.9.3 - 2026-10-09
+### Features
+* The native library is now always compiled in release mode, regardless of the host application's `MIX_ENV`. SDK developers can opt into debug builds via `KAMELEOON_ELIXIR_NIF_MODE=debug`.
+* Long-running native calls (client creation, client removal, datafile snapshot) are now scheduled on dirty schedulers and no longer stall BEAM scheduler threads.
+* Added ExDoc documentation for the public API: `Kameleoon.Client` functions (including option units and defaults), data structs (`Kameleoon.Data.*`), result types (`Kameleoon.Types.*`) and `Kameleoon.Error`. The changelog is now shipped with the package.
+
+### Bug fixes
+* [`ClientFactory.create/2`][create] now returns an `Initialization` error when the site code is empty or when the client ID or client secret is empty, consistent with every other client-creation failure. The error message names the exact cause. The `SiteCodeIsEmpty` and `ConfigCredentialsInvalid` error codes previously used for these cases are no longer returned.
+* Asynchronous operations ([`initialize`][initialize], `flush_instant`, `get_remote_data`, `get_remote_visitor_data`, `get_visitor_warehouse_audience`) no longer time out prematurely after 30 seconds and no longer leave stray messages in the caller's mailbox. Timeouts are governed by the configured timeouts only.
+* The SDK is now an OTP application: its events process runs under `Kameleoon.Supervisor` and is restarted automatically after a crash. Configuration-update handlers, SDK event handlers and the custom logger survive such a crash: the restarted process restores them, and the native library addresses it by name instead of by pid. No setup is required from host applications, as Mix starts dependency applications automatically.
+* [`ClientFactory.forget/2`][forget] without `:environment` no longer drops the handlers of clients created with an environment.
+* The deprecated `on_datafile_update/2` is now a shorthand for `set_event_handler/3` with `:datafile_update`. Its callback is thereby also protected against crashes like every other event handler.
+* Configuration file read or parse errors are now reported by `ClientFactory.create/2` instead of being silently ignored.
+* Removed the implicit default configuration file path `/etc/kameleoon/client-elixir.conf`. `ClientFactory.create/2` now requires either `:config` or `:config_path` and returns an `Initialization` error when neither is given, instead of failing on an unexpected file.
+* Data structs built without `new!/2` and carrying an unsupported `:type` (for example `%Kameleoon.Data.Browser{type: :netscape}`), or a `Kameleoon.Data.CustomData` with neither `:index` nor `:name`, are now rejected with the new `InvalidArgument` error code instead of `Internal`.
+* `get_datafile/1` now returns an `Initialization` error until the client is ready, instead of an empty data file.
+* Lowered the log level of the message emitted when the streaming server closes the real-time (SSE) connection from `error` to `info`. The streaming server recycles connections periodically and the SDK reconnects automatically, so this is expected behavior. Connection failures (error responses, network errors) are still logged as `error`.
+
+[create]: https://docs.kameleoon.com/developer-docs/sdks/web-sdks/elixir-sdk#create
+[forget]: https://docs.kameleoon.com/developer-docs/sdks/web-sdks/elixir-sdk#forget
+[initialize]: https://docs.kameleoon.com/developer-docs/sdks/web-sdks/elixir-sdk#initialize
+
 ## 0.9.2 - 2026-09-11
 ### Bug fixes
 * Reduced the load on the Data API during its outages. After a failed tracking request, the SDK sends only one visitor's data per tracking request until a request succeeds, instead of retrying with a full-size (up to 2.5 MB) request on every tracking interval. Once the Data API is reachable again, the accumulated visitor data is sent in full-size requests as usual.
